@@ -1,0 +1,13 @@
+#!/bin/zsh
+
+DIR="$(dirname $0)"
+
+. "$DIR/private.in"
+
+message=$(printf "$1")
+
+curl -s \
+  --form-string "token=$JYC_PUSHOVER_TOKEN" \
+  --form-string "user=$JYC_PUSHOVER_USER" \
+  --form-string "message=$message" \
+  https://api.pushover.net/1/messages.json

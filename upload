@@ -1,0 +1,27 @@
+#!/bin/zsh
+
+DIR="$(dirname $0)"
+
+. "$DIR/private.in"
+
+if [[ -z "$1" ]]; then
+  exit 1
+fi
+
+upload() {
+  echo "put '$2'\nexit\n" | sftp -P $JYC_UPLOAD_SERVER_PORT $JYC_UPLOAD_SERVER_HOST:"$1"
+}
+
+if [[ -n "$2" ]]; then
+  case "$1" in
+    p|public)
+      upload /srv/eqv.http/dl $2
+      echo "Uploaded to: http://eqv.io/dl/$2"
+      ;;
+    *)
+      echo "Unrecognized option."
+      ;;
+  esac
+else
+  upload "" "$1"
+fi

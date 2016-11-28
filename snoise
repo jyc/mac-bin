@@ -1,0 +1,17 @@
+#!/bin/zsh
+
+case "$1" in
+    rain)
+        mpv -loop=inf ~/Music/RainyMood.mp3
+        ;;
+    pink)
+        play -t sl -r48000 -c2 - synth -1 pinknoise tremolo .1 40 < /dev/zero
+        ;;
+    beach)
+        # Credit: http://unreasonable.org/comment/16322#comment-16322
+        play -n -n --combine merge synth $len pinknoise band -n 1200 1800 tremolo 50 10 tremolo 0.14 70 tremolo 0.2 50 vol 0.20
+        ;;
+    *)
+        echo "Usage: $0 <rain|pink|beach>"
+        exit 1
+esac

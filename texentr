@@ -1,0 +1,4 @@
+#!/bin/sh
+
+fname=`basename $1 .tex`
+echo "$fname.tex" | entr pdflatex -interaction=nonstopmode "$fname.tex"

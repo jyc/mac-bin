@@ -1,0 +1,132 @@
+#!/bin/zsh
+
+# Play two short beeps and show a notification with the current time every 30
+# minutes.
+# If the argument supplied is 'now', then just show the notification now.
+
+# 1800 seconds is thirty minutes.
+BELL_PERIOD=1200
+EXPIRATION_TIME_S=10
+
+LOG_FILE="$HOME/Documents/log.txt"
+
+PROMPT="What do you plan on doing now?"
+
+CURRENT_TASK_TIME=
+CURRENT_TASK=
+
+send-notification() {
+  if [ "$(uname)" = "Darwin" ]; then
+    terminal-notifier -title "$1" -message "$2" \
+                      -appIcon ~/Pictures/mozilla-bell-emoji.png \
+                      -timeout $EXPIRATION_TIME_S \
+    >/dev/null &
+  else
+    local expiration_time_ms=$((EXPIRATION_TIME_S * 1000))
+    notify-send "$1" "$2" --expire-time=$expiration_time_ms
+  fi
+}
+
+human-date() {
+  if [ "$(uname)" = "Darwin" ]; then
+    date -r "$1"
+  else
+    date -d @"$1"
+  fi
+}
+
+# http://unix.stackexchange.com/a/27014
+displaytime() {
+  local T=$1
+  local D=$((T/60/60/24))
+  local H=$((T/60/60%24))
+  local M=$((T/60%60))
+  local S=$((T%60))
+  (( $D > 0 )) && printf '%d days ' $D
+  (( $H > 0 )) && printf '%d hours ' $H
+  (( $M > 0 )) && printf '%d minutes ' $M
+  (( $D > 0 || $H > 0 || $M > 0 )) && printf 'and '
+  printf '%d seconds\n' $S
+}
+
+bell() {
+  play -q -n synth 0.15 sine 800 
+  play -q -n synth 0.15 sine 800
+  local message
+  message="It's now $(date +'%-I:%M %p')."
+  if [ -n "$CURRENT_TASK" ]; then
+    local diff=$(($(date +'%s') - $CURRENT_TASK_TIME))
+    message="$message $(displaytime $diff) ago, you planned on $CURRENT_TASK."
+  fi
+  send-notification Bell "$message"
+}
+
+add-log-entry() {
+  human-date "$1" >> $LOG_FILE
+  echo "$2\n" >> $LOG_FILE
+}
+
+usage() {
+  echo "Usage: bell [now]" >&2
+  exit 1
+}
+
+on-exit() {
+  add-log-entry $(date +'%s') "(exited)"
+  echo
+  exit
+}
+
+trap on-exit SIGINT SIGTERM
+
+case "$#" in
+  1)
+    if [ "$1" = "now" ]; then
+      bell
+    else
+      usage
+    fi
+    ;;
+  0)
+    add-log-entry $(date +'%s') "(started)"
+
+    clear
+    echo -n "$PROMPT "
+
+    while true; do
+      bell
+
+      local deadline=$(($(date +'%s') + $BELL_PERIOD))
+      while [ "$(date +'%s')" -lt "$deadline" ]; do
+        local delta=$(($deadline - $(date +'%s')))
+
+        read -t $delta CURRENT_TASK
+
+        if [ $? -eq 0 ]; then
+          # User entered some task.
+          CURRENT_TASK_TIME=$(date +'%s')
+
+          add-log-entry "$CURRENT_TASK_TIME" "$CURRENT_TASK"
+
+          echo -n "OK."
+
+          play -q -n synth 0.1 sine 540 
+          play -q -n synth 0.1 sine 700
+          play -q -n synth 0.1 sine 800
+
+          sleep 5
+          clear
+
+          if [ -n "$CURRENT_TASK" ]; then
+            echo "At $(human-date $CURRENT_TASK_TIME), you planned on $CURRENT_TASK."
+            echo
+          fi
+          echo -n "$PROMPT "
+        fi
+      done
+    done
+    ;;
+  *)
+    usage
+    ;;
+esac

@@ -1,0 +1,5 @@
+#!/bin/zsh
+
+PASS=$(< /dev/urandom gtr -dc "A-Za-z0-9" | ghead -c$1)
+echo $PASS
+echo -n $PASS | pbcopy

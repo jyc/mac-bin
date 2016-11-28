@@ -1,0 +1,45 @@
+#!/bin/zsh
+
+VM=jc-cyclopia
+
+isup() {
+  VBoxManage list runningvms | grep $VM 2>&1 >/dev/null
+}
+
+if [[ $ARGC -eq 0 ]]; then
+  isup
+  if [[ $? -ne 0 ]]; then
+    echo "Starting $VM..."
+    $0 start
+  fi
+  while true; do
+    echo "Trying to connect to $VM..."
+    ssh $VM
+    if [[ $? -eq 255 ]]; then
+      sleep 5
+      continue
+    fi
+    exit
+  done
+fi
+
+case "$1" in
+  start)
+    VBoxManage startvm --type headless $VM
+    ;;
+  save)
+    VBoxManage controlvm $VM savestate
+    ;;
+  isup)
+    isup
+    if [[ $? -eq 0 ]]; then
+      echo "$VM is up."
+    else
+      echo "$VM is down."
+    fi
+    ;;
+  *)
+    echo "Usage: $0 [start|save]"
+    exit 1
+    ;;
+esac
