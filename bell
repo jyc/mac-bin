@@ -77,6 +77,15 @@ on-exit() {
   exit
 }
 
+prompt() {
+  clear
+  if [ -n "$CURRENT_TASK" ]; then
+    echo "At $(human-date $CURRENT_TASK_TIME), you planned on $CURRENT_TASK."
+    echo
+  fi
+  echo -n "$PROMPT "
+}
+
 trap on-exit SIGINT SIGTERM
 
 case "$#" in
@@ -90,10 +99,9 @@ case "$#" in
   0)
     add-log-entry $(date +'%s') "(started)"
 
-    clear
-    echo -n "$PROMPT "
-
     while true; do
+      prompt
+
       bell
 
       local deadline=$(($(date +'%s') + $BELL_PERIOD))
@@ -108,20 +116,19 @@ case "$#" in
 
           add-log-entry "$CURRENT_TASK_TIME" "$CURRENT_TASK"
 
+          if [[ "$CURRENT_TASK" == "re:"* ]]; then
+            CURRENT_TASK=
+          fi
+
           echo -n "OK."
 
           play -q -n synth 0.1 sine 540 
-          play -q -n synth 0.1 sine 700
+          play -q -n synth 0.1 sine 675
           play -q -n synth 0.1 sine 800
 
           sleep 5
-          clear
 
-          if [ -n "$CURRENT_TASK" ]; then
-            echo "At $(human-date $CURRENT_TASK_TIME), you planned on $CURRENT_TASK."
-            echo
-          fi
-          echo -n "$PROMPT "
+          prompt
         fi
       done
     done
