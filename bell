@@ -5,12 +5,25 @@
 # If the argument supplied is 'now', then just show the notification now.
 
 # 1800 seconds is thirty minutes.
-BELL_PERIOD=1200
+BELL_PERIOD=11800
 EXPIRATION_TIME_S=10
 
 LOG_FILE="$HOME/Documents/log.txt"
 
-PROMPT="What do you plan on doing now?"
+read -r -d '' PROMPT <<'EOF'
+What do you plan on doing now?
+
+%F{248}Use the following prefixes for non-tasks (with examples):
+
+- obs: "My eyes feel tired after using the computer so much yesterday") with
+  "observation:".
+- note: "Wasted time after finding out why (...) General bad habit?".
+- post: "Added support for prefixes to bell script." (e.g. unexpected short
+  task, concludes the current activity)
+- re: "Ended up going very well." (also concludes the current activity)%f
+
+%F{082}?%f
+EOF
 
 CURRENT_TASK_TIME=
 CURRENT_TASK=
@@ -52,8 +65,7 @@ displaytime() {
 bell() {
   play -q -n synth 0.15 sine 800 
   play -q -n synth 0.15 sine 800
-  local message
-  message="It's now $(date +'%-I:%M %p')."
+  local message="It's now $(date +'%-I:%M %p')."
   if [ -n "$CURRENT_TASK" ]; then
     local diff=$(($(date +'%s') - $CURRENT_TASK_TIME))
     message="$message $(displaytime $diff) ago, you planned on $CURRENT_TASK."
@@ -80,10 +92,10 @@ on-exit() {
 prompt() {
   clear
   if [ -n "$CURRENT_TASK" ]; then
-    echo "At $(human-date $CURRENT_TASK_TIME), you planned on $CURRENT_TASK."
+    print -P "At $(human-date $CURRENT_TASK_TIME), you planned on %F{117}$CURRENT_TASK%f."
     echo
   fi
-  echo -n "$PROMPT "
+  print -Pn "$PROMPT "
 }
 
 trap on-exit SIGINT SIGTERM
@@ -108,25 +120,31 @@ case "$#" in
       while [ "$(date +'%s')" -lt "$deadline" ]; do
         local delta=$(($deadline - $(date +'%s')))
 
-        read -t $delta CURRENT_TASK
+        read -t $delta NEW_CURRENT_TASK
 
         if [ $? -eq 0 ]; then
+          local now=$(date +'%s')
           # User entered some task.
-          CURRENT_TASK_TIME=$(date +'%s')
+          add-log-entry "$now" "$NEW_CURRENT_TASK"
 
-          add-log-entry "$CURRENT_TASK_TIME" "$CURRENT_TASK"
-
-          if [[ "$CURRENT_TASK" == "re:"* ]]; then
+          if [[ "$NEW_CURRENT_TASK" == "re:"* ]]; then
             CURRENT_TASK=
+          elif [[ "$NEW_CURRENT_TASK" == "post:"* ]]; then
+            CURRENT_TASK=
+          elif [[ "$NEW_CURRENT_TASK" == *":"* ]]; then
+            # Do nothing.
+          else
+            CURRENT_TASK_TIME=$now
+            CURRENT_TASK="$NEW_CURRENT_TASK"
           fi
 
-          echo -n "OK."
+          print -Pn "\nOK!"
 
           play -q -n synth 0.1 sine 540 
           play -q -n synth 0.1 sine 675
           play -q -n synth 0.1 sine 800
 
-          sleep 5
+          sleep 2
 
           prompt
         fi
